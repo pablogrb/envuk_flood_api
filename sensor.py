@@ -49,7 +49,7 @@ class FloodSensor(SensorEntity):
         self._attr_name = fsensor["name"]
         self._state = None
         self._attr_native_unit_of_measurement = UnitOfLength.METERS
-        self._attr_device_class = SensorDeviceClass.LENGTH
+        self._attr_device_class = SensorDeviceClass.DISTANCE
         self._attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
