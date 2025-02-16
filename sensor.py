@@ -70,7 +70,7 @@ class FloodSensor(SensorEntity):
     def update(self) -> None:
         """Update the sensor"""
         _LOGGER.info("Updating the Environment UK Flood Sensor")
-        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._name}/readings?latest"
+        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_name}/readings?latest"
         response = requests.get(url, timeout=10)
         data = response.json()
         self._state = data["value"]
