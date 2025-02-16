@@ -1,15 +1,12 @@
 {
-    "domain": "envuk_flood_API",
-    "name": "Environment UK Real Time Flood API",
-    "version": "0.0.1",
-    "integration_type": "device",
-    "documentation": "https://github.com/pablogrb/envuk_flood_API",
-    "dependencies": [],
-    "codeowners": [
-        "@pablogrb"
-      ],
-    "config_flow": true,
-    "requirements": ["requests"],
-    "iot_class": "cloud_polling",
-    "single_config_entry": false
-  }
+  "domain": "envuk_flood_api",
+  "name": "Environment UK Real Time Flood Monitoring API",
+  "requirements": ["requests", "voluptuous"],
+  "iot_class": "cloud_polling",
+  "version": "0.0.1",
+  "integration_type": "device",
+  "documentation": "https://github.com/pablogrb/envuk_flood_api",
+  "codeowners": [
+      "@pablogrb"
+    ]
+}
