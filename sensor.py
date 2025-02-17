@@ -46,7 +46,6 @@ class FloodSensor(SensorEntity):
     def __init__(self, fsensor) -> None:
         """Initialize the sensor"""
         _LOGGER.info("Initialising the Environment UK Flood Sensor")
-#        _LOGGER.info(str(fsensor.keys()))
         self._state = None
         self._attr_name = fsensor["name"]
         self._attr_id = fsensor["notation"]
@@ -84,7 +83,7 @@ class FloodSensor(SensorEntity):
         """Update the sensor"""
         _LOGGER.info("Updating the Environment UK Flood Sensor")
         url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}/readings?latest"
-#        _LOGGER.info(url)
+        _LOGGER.debug(url)
         response = requests.get(url, timeout=10)
         data = response.json()
         self._state = data['items'][0]['value']
@@ -93,7 +92,7 @@ class FloodSensor(SensorEntity):
         """Fetch the station information from the API"""
         _LOGGER.info("Fetching the station information")
         url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}.json"
-        _LOGGER.info(url)
+        _LOGGER.debug(url)
         response = requests.get(url, timeout=10)
         data = response.json()
         st_data = {
