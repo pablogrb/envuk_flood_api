@@ -46,8 +46,10 @@ class FloodSensor(SensorEntity):
     def __init__(self, fsensor) -> None:
         """Initialize the sensor"""
         _LOGGER.info("Initialising the Environment UK Flood Sensor")
+#        _LOGGER.info(str(fsensor.keys()))
         self._state = None
         self._attr_name = fsensor["name"]
+        self._attr_id = fsensor["notation"]
         self._attr_native_unit_of_measurement = UnitOfLength.METERS
         self._attr_device_class = SensorDeviceClass.DISTANCE
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -70,18 +72,28 @@ class FloodSensor(SensorEntity):
         """Return the unit of measurement"""
         return self._attr_native_unit_of_measurement
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        """Return the state attributes"""
+        return {
+            "latitude": self._attr_latitude,
+            "longitude": self._attr_longitude,
+        }
+
     def update(self) -> None:
         """Update the sensor"""
         _LOGGER.info("Updating the Environment UK Flood Sensor")
-        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_name}/readings?latest"
+        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}/readings?latest"
+#        _LOGGER.info(url)
         response = requests.get(url, timeout=10)
         data = response.json()
         self._state = data['items'][0]['value']
-    
+
     def get_st_info(self) -> dict:
         """Fetch the station information from the API"""
         _LOGGER.info("Fetching the station information")
-        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_name}.json"
+        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}.json"
+        _LOGGER.info(url)
         response = requests.get(url, timeout=10)
         data = response.json()
         st_data = {
