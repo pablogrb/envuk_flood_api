@@ -12,6 +12,7 @@ from homeassistant.components.sensor import (PLATFORM_SCHEMA,
                                              SensorStateClass)
 from homeassistant.const import CONF_ID, CONF_NAME, UnitOfLength
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 
@@ -32,20 +33,38 @@ def setup_platform(
     add_entities: AddEntitiesCallback,
     discovery_info: DiscoveryInfoType | None = None,
 ) -> None:
-    """Set up the sensor"""
+    """Set up the device and sensors"""
     _LOGGER.info("Setting up the Environment UK Flood Sensor")
+    # get the configuration
     fsensor = {
         "name" : config[CONF_NAME],
         "notation" : config[CONF_ID],
     }
-    add_entities([FloodSensor(fsensor)])
+    # create the device
+    device_registry = dr.async_get(hass)
+    device_registry.async_get_or_create(
+        config_entry_id=f"ukenv_fs_{fsensor['notation']}",
+        name=f"ukenv_fs_{fsensor['notation']}",
+        manufacturer="UK Environmental Agency",
+        model="Environment Agency Real Time flood-monitoring API",
+        sw_version="0.9",
+        identifiers={("envuk_flood_api", f"ukenv_fs_{fsensor["notation"]}")},
+    )
+    # add the sensors
+    add_entities([
+        FloodSensorDatum(fsensor),
+        FloodSensorSeaLevel(fsensor),
+    ])
 
+# Base class for the sensors
 class FloodSensor(SensorEntity):
     """Representation of a Flood Sensor"""
 
+    # Sensor initialization
     def __init__(self, fsensor) -> None:
         """Initialize the sensor"""
         _LOGGER.info("Initialising the Environment UK Flood Sensor")
+#        _LOGGER.info(str(fsensor.keys()))
         self._state = None
         self._attr_name = fsensor["name"]
         self._attr_id = fsensor["notation"]
@@ -55,21 +74,55 @@ class FloodSensor(SensorEntity):
         st_data = self.get_st_info()
         self._attr_latitude = st_data["latitude"]
         self._attr_longitude = st_data["longitude"]
+        self._attr_datum = st_data["stageScale"]["datum"]
 
+    # Device
+    @property
+    def device_class(self) -> str:
+        """Return the device class of the sensor"""
+        return self._attr_device_class
+
+    @property
+    def device_info(self) -> dr.DeviceInfo:
+        """Return device information."""
+        # Identifiers are what group entities into the same device.
+        # If your device is created elsewhere, you can just specify the indentifiers parameter.
+        # If your device connects via another device, add via_device parameter with the indentifiers of that device.
+        return dr.DeviceInfo(
+            name=f"ukenv_fs_{self._attr_id}",
+            manufacturer="UK Environmental Agency",
+            model="Environment Agency Real Time flood-monitoring API",
+            sw_version="0.9",
+            identifiers={("envuk_flood_api", f"ukenv_fs_{self._attr_id}")},
+        )
+
+    # Sensor properties
     @property
     def name(self) -> str:
         """Return the name of the sensor"""
         return self._attr_name
 
     @property
-    def state(self) -> float:
-        """Return the state of the sensor"""
-        return self._state
+    def native_value(self) -> int | float:
+        """Return the state of the entity."""
+        # Using native value and native unit of measurement, allows you to change units
+        # in Lovelace and HA will automatically calculate the correct value.
+        return float(self._state)
 
     @property
     def native_unit_of_measurement(self) -> str:
         """Return the unit of measurement"""
         return self._attr_native_unit_of_measurement
+
+    @property
+    def state_class(self) -> str:
+        """Return the state class of the sensor"""
+        return self._attr_state_class
+
+    @property
+    def unique_id(self) -> str:
+        """Return a unique ID to use for this sensor."""
+        return f"ukenv_fs_{self._attr_id}_mASD"
 
     @property
     def extra_state_attributes(self) -> dict:
@@ -79,20 +132,12 @@ class FloodSensor(SensorEntity):
             "longitude": self._attr_longitude,
         }
 
-    def update(self) -> None:
-        """Update the sensor"""
-        _LOGGER.info("Updating the Environment UK Flood Sensor")
-        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}/readings?latest"
-        _LOGGER.debug(url)
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        self._state = data['items'][0]['value']
-
+    # Sensor helpers
     def get_st_info(self) -> dict:
         """Fetch the station information from the API"""
         _LOGGER.info("Fetching the station information")
         url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}.json"
-        _LOGGER.debug(url)
+        _LOGGER.info(url)
         response = requests.get(url, timeout=10)
         data = response.json()
         st_data = {
@@ -100,3 +145,31 @@ class FloodSensor(SensorEntity):
             "longitude": data['items']['long'],
         }
         return st_data
+
+# Sensor class for height from datum
+class FloodSensorDatum(FloodSensor):
+    """Water height above datum"""
+    
+    # Sensor update
+    def update(self) -> None:
+        """Update the sensor"""
+        _LOGGER.info("Updating the Environment UK Flood Sensor - Datum")
+        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}/readings?latest"
+        _LOGGER.debug(url)
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        self._state = data['items'][0]['value']
+
+# Sensor class for sea level
+class FloodSensorSeaLevel(FloodSensor):
+    """Water height above sea level"""
+    
+    # Sensor update
+    def update(self) -> None:
+        """Update the sensor"""
+        _LOGGER.info("Updating the Environment UK Flood Sensor - Sea Level")
+        url = f"https://environment.data.gov.uk/flood-monitoring/id/stations/{self._attr_id}/readings?latest"
+        _LOGGER.debug(url)
+        response = requests.get(url, timeout=10)
+        data = response.json()
+        self._state = data['items'][0]['value'] + self._attr_datum
